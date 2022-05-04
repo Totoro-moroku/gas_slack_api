@@ -4,15 +4,14 @@ import './types'
 class SlackUser {
   private user_token: string
   private user_id: string
-  public url: string
-
-  user_profile: string[]
+  url: string
+  users: string[]
 
   constructor(user: UserToken, url: string) {
     this.user_token = user.token
     this.user_id = user.id
     this.url = url
-    this.user_profile = ['users', 'profile']
+    this.users = ['users']
   }
 
   get Headers(): Object {
@@ -31,19 +30,28 @@ class SlackUser {
     return { method: method, headers: this.Headers }
   }
 
-  get UserProfile() {
-    const api_point = this.user_profile.concat(['get'])
+  getSlackAPI(api: string[]) {
+    const api_point = this.users.concat(api)
     const options: Object = {
       method: 'get',
       headers: this.Headers,
     }
     const response = UrlFetchApp.fetch(this.makeSlackAPIUrl(api_point), options)
     const resJson = JSON.parse(response.getContentText())
-    return resJson.profile
+
+    return resJson
+  }
+
+  get UserProfile(): UserProfile {
+    return this.getSlackAPI(['profile', 'get'])
+  }
+
+  get UserPresence(): UserPresence {
+    return this.getSlackAPI(['getPresence'])
   }
 
   setUserProfile(status: UserStatus) {
-    const api_point = this.user_profile.concat(['set'])
+    const api_point = this.users.concat(['profile', 'set'])
 
     const payload = {
       profile: status,
@@ -92,7 +100,15 @@ function myFunction() {
     slack_props.url
   )
 
-  if (slack_api.UserProfile.status_text) return
+  const user_profile = slack_api.UserProfile
+
+  console.log(user_profile)
+
+  if (user_profile.profile.status_text) return
+
+  const user_presence = slack_api.UserPresence
+
+  if (user_presence.presence === 'away') return
 
   slack_api.setUserProfile({
     status_emoji: value[0],
